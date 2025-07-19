@@ -22,3 +22,10 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Firebase CLI specific files
+.firebase/
+.env
+.idx/
+*.log
+node_modules/
