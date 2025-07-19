@@ -47,15 +47,10 @@
         import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
         // Your web app's Firebase configuration (AS PROVIDED BY YOU IN PASTEBIN)
-        const firebaseConfig = {
-            apiKey: "AIzaSyDHqdwCzSHW0JvoYXfEet-BE_kdoOsZdEo",
-            authDomain: "maduraimesspos.firebaseapp.com",
-            projectId: "maduraimesspos",
-            storageBucket: "maduraimesspos.firebasestorage.app",
-            messagingSenderId: "892062298968",
-            appId: "1:892062298968:web:33d0792a08d8739307eb2d",
-            measurementId: "G-6J8VF13727"
-        };
+       // Firebase configuration is automatically provided by Canvas/Firebase Hosting
+        // as global variables __firebase_config and __initial_auth_token.
+        // Parse the firebaseConfig from the global variable.
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
 
