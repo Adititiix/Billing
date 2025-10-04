@@ -1,5 +1,46 @@
 // Madurai Mess POS System JavaScript
 
+// Menu Items Data with Session Availability
+const menuItems = [
+    // Morning Session Items
+    { id: 1, name: "Idli", price: 15, category: "Breakfast", description: "Steamed rice cakes (2 pieces)", sessions: ["morning", "afternoon", "night"] },
+    { id: 2, name: "Dosa", price: 25, category: "Breakfast", description: "Crispy rice crepe", sessions: ["morning", "afternoon", "night"] },
+    { id: 3, name: "Vada", price: 20, category: "Breakfast", description: "Deep fried lentil donuts (2 pieces)", sessions: ["morning", "afternoon"] },
+    { id: 4, name: "Upma", price: 18, category: "Breakfast", description: "Semolina breakfast dish", sessions: ["morning"] },
+    { id: 5, name: "Pongal", price: 22, category: "Breakfast", description: "Rice and lentil dish", sessions: ["morning"] },
+    { id: 6, name: "Poori", price: 20, category: "Breakfast", description: "Deep fried bread (3 pieces)", sessions: ["morning", "afternoon"] },
+    { id: 7, name: "Rava Dosa", price: 30, category: "Breakfast", description: "Crispy semolina crepe", sessions: ["morning", "afternoon"] },
+
+    // Afternoon Session Items
+    { id: 8, name: "Sambar Rice", price: 35, category: "Lunch", description: "Rice with lentil curry", sessions: ["afternoon", "night"] },
+    { id: 9, name: "Curd Rice", price: 30, category: "Lunch", description: "Rice with yogurt", sessions: ["afternoon", "night"] },
+    { id: 10, name: "Rasam Rice", price: 32, category: "Lunch", description: "Rice with tangy soup", sessions: ["afternoon", "night"] },
+    { id: 11, name: "Vegetable Rice", price: 40, category: "Lunch", description: "Mixed vegetable rice", sessions: ["afternoon", "night"] },
+    { id: 12, name: "Lemon Rice", price: 28, category: "Lunch", description: "Tangy lemon flavored rice", sessions: ["afternoon", "night"] },
+    { id: 13, name: "Meals", price: 60, category: "Lunch", description: "Complete South Indian thali", sessions: ["afternoon"] },
+    { id: 14, name: "Biryani", price: 80, category: "Lunch", description: "Aromatic rice with spices", sessions: ["afternoon", "night"] },
+
+    // Night Session Items
+    { id: 15, name: "Chapati", price: 8, category: "Dinner", description: "Indian flatbread (1 piece)", sessions: ["night"] },
+    { id: 16, name: "Parotta", price: 12, category: "Dinner", description: "Layered flatbread (1 piece)", sessions: ["night"] },
+    { id: 17, name: "Chicken Curry", price: 80, category: "Dinner", description: "Spicy chicken curry", sessions: ["afternoon", "night"] },
+    { id: 18, name: "Mutton Curry", price: 120, category: "Dinner", description: "Traditional mutton curry", sessions: ["afternoon", "night"] },
+    { id: 19, name: "Fish Curry", price: 90, category: "Dinner", description: "South Indian fish curry", sessions: ["afternoon", "night"] },
+    { id: 20, name: "Vegetable Curry", price: 45, category: "Dinner", description: "Mixed vegetable curry", sessions: ["night"] },
+    { id: 21, name: "Dal Fry", price: 35, category: "Dinner", description: "Spiced lentil curry", sessions: ["night"] },
+
+    // Beverages (Available all sessions)
+    { id: 22, name: "Filter Coffee", price: 15, category: "Beverages", description: "Traditional South Indian coffee", sessions: ["morning", "afternoon", "night"] },
+    { id: 23, name: "Tea", price: 10, category: "Beverages", description: "Indian masala tea", sessions: ["morning", "afternoon", "night"] },
+    { id: 24, name: "Buttermilk", price: 12, category: "Beverages", description: "Spiced yogurt drink", sessions: ["afternoon", "night"] },
+    { id: 25, name: "Fresh Lime", price: 15, category: "Beverages", description: "Fresh lime water", sessions: ["afternoon", "night"] },
+
+    // Desserts
+    { id: 26, name: "Payasam", price: 25, category: "Desserts", description: "Traditional sweet pudding", sessions: ["afternoon", "night"] },
+    { id: 27, name: "Halwa", price: 30, category: "Desserts", description: "Sweet semolina dessert", sessions: ["afternoon", "night"] },
+    { id: 28, name: "Gulab Jamun", price: 20, category: "Desserts", description: "Sweet milk dumplings (2 pieces)", sessions: ["afternoon", "night"] }
+];
+
 // Application State
 let currentOrder = {
     billNo: '',
@@ -13,110 +54,10 @@ let currentOrder = {
     timestamp: null
 };
 
-// This variable will hold orders fetched for reports
-let allOrdersForReports = [];
+let orders = JSON.parse(localStorage.getItem('madurai_mess_orders') || '[]');
 
-// --- Firebase Functions for Data Operations ---
-
-/**
- * Fetches menu items from the Firestore 'menuItems' collection.
- * Populates the global 'fetchedMenuItems' array.
- */
-async function fetchMenuItemsFromFirestore() {
-    try {
-        if (!window.db) {
-            console.error("Firebase DB not initialized. Cannot fetch menu items.");
-            return;
-        }
-        const menuItemsRef = window.collection(window.db, "menuItems");
-        const q = window.query(menuItemsRef, window.orderBy("id", "asc"));
-        const querySnapshot = await window.getDocs(q);
-        const items = [];
-        querySnapshot.forEach((doc) => {
-            items.push(doc.data());
-        });
-        window.fetchedMenuItems = items;
-        console.log("Menu items fetched from Firestore:", window.fetchedMenuItems);
-    } catch (error) {
-        console.error("Error fetching menu items from Firestore:", error);
-        window.showCustomAlert("Failed to load menu items. Please check your internet connection or try again later.");
-        window.fetchedMenuItems = [];
-    }
-}
-
-/**
- * Saves a completed order to the Firestore 'orders' collection.
- * @param {object} orderData - The order object to save.
- * @returns {boolean} True if save was successful, false otherwise.
- */
-async function saveOrderToFirestore(orderData) {
-    try {
-        const ordersCollectionRef = window.collection(window.db, "orders");
-        const docRef = await window.addDoc(ordersCollectionRef, orderData);
-        console.log("Order successfully saved to Firestore with ID: ", docRef.id);
-        return true;
-    } catch (e) {
-        console.error("Error adding order to Firestore: ", e);
-        window.showCustomAlert("Failed to save order. Please try again.");
-        return false;
-    }
-}
-
-/**
- * Fetches orders from Firestore for reporting purposes based on date range and session.
- * @param {string} startDate - ISO string for the start date.
- * @param {string} endDate - ISO string for the end date.
- * @param {string} sessionFilter - 'morning', 'afternoon', 'night', or 'all'.
- * @returns {Array} An array of filtered order data.
- */
-async function fetchOrdersForReports(startDate, endDate, sessionFilter = 'all') {
-    try {
-        let ordersRef = window.collection(window.db, "orders");
-        let q = window.query(
-            ordersRef,
-            window.orderBy("completedAt", "desc")
-        );
-
-        if (startDate && endDate) {
-            q = window.query(q,
-                window.where("completedAt", ">=", startDate),
-                window.where("completedAt", "<=", endDate)
-            );
-        }
-        if (sessionFilter !== 'all') {
-            q = window.query(q, window.where("session", "==", sessionFilter));
-        }
-
-        const querySnapshot = await window.getDocs(q);
-        const ordersData = [];
-        querySnapshot.forEach((doc) => {
-            ordersData.push(doc.data());
-        });
-        window.allOrdersForReports = ordersData;
-        return ordersData;
-    } catch (error) {
-        console.error("Error fetching orders for reports:", error);
-        return [];
-    }
-}
-
-// --- End Firebase Functions ---
-
-
-// --- Utility Functions ---
-
-/**
- * Generates a bill number based on current date and a daily sequential counter from Firestore.
- * Uses Firestore transactions for atomic increment.
- * Stores the generated bill number in sessionStorage until the order is completed.
- * @returns {Promise<string>} A promise that resolves to the generated bill number.
- */
-async function generateBillNumber() {
-    const storedBillNo = sessionStorage.getItem('currentBillNo');
-    if (storedBillNo && currentOrder.items.length > 0) { // Only reuse if order already has items
-        return storedBillNo;
-    }
-
+// Utility Functions
+function generateBillNumber() {
     const now = new Date();
     const datePart = now.toLocaleDateString('en-GB').split('/').reverse().join('');
     const todayDateKey = now.toLocaleDateString('en-GB').replace(/\//g, '');
@@ -155,11 +96,7 @@ function formatCurrency(amount) {
 }
 
 function formatDate(date) {
-    const d = new Date(date);
-    if (isNaN(d.getTime())) {
-        return 'Invalid Date';
-    }
-    return d.toLocaleDateString('en-IN', {
+    return new Date(date).toLocaleDateString('en-IN', {
         year: 'numeric',
         month: 'short',
         day: 'numeric',
@@ -286,12 +223,13 @@ function initializeSearch() {
                 return;
             }
 
-            const filteredItems = window.fetchedMenuItems.filter(item =>
-                Array.isArray(item.sessions) && item.sessions.includes(currentOrder.session) &&
-                (item.name.toLowerCase().startsWith(query) ||
-                 item.category.toLowerCase().startsWith(query) ||
-                 (item.description && item.description.toLowerCase().startsWith(query)))
-            );
+        // Filter items by current session and search query
+        const filteredItems = menuItems.filter(item =>
+            item.sessions.includes(currentOrder.session) &&
+            (item.name.toLowerCase().includes(query) ||
+             item.category.toLowerCase().includes(query) ||
+             item.description.toLowerCase().includes(query))
+        );
 
             if (filteredItems.length > 0) {
                 searchResults.innerHTML = filteredItems.map(item => `
@@ -322,22 +260,12 @@ function initializeSearch() {
         });
     }
 }
-
 // Function to show available items for current session
 function showSessionItems() {
     const searchResults = document.getElementById('searchResults');
-    
-    if (!searchResults) return;
 
-    if (!window.fetchedMenuItems || window.fetchedMenuItems.length === 0) {
-        searchResults.innerHTML = `<div class="p-3 text-gray-500 text-center">Menu items are not loaded yet. Please wait or refresh.</div>`;
-        lucide.createIcons();
-        return;
-    }
-
-    const sessionMenuItems = window.fetchedMenuItems.filter(item => {
-        return Array.isArray(item.sessions) && item.sessions.includes(currentOrder.session);
-    }); 
+    // Show all items available for current session
+    const sessionItems = menuItems.filter(item => item.sessions.includes(currentOrder.session));
 
     if (sessionMenuItems.length > 0) {
         searchResults.innerHTML = `
@@ -363,33 +291,19 @@ function showSessionItems() {
                 </div>
             `).join('')}
         `;
-        lucide.createIcons();
-    } else {
-        searchResults.innerHTML = `<div class="p-3 text-gray-500 text-center">No items found for ${currentOrder.session} session.</div>`;
+        searchResults.classList.remove('hidden');
     }
 }
 
 // Order management
 function addItemToOrder(itemId) {
-    const item = window.fetchedMenuItems.find(i => i.id === itemId); 
+    const item = menuItems.find(i => i.id === itemId);
+    const existingItem = currentOrder.items.find(i => i.id === itemId);
     
-    if (!item) {
-        console.error(`Item with ID ${itemId} not found in fetched menu.`);
-        window.showCustomAlert(`Item with ID ${itemId} not found.`);
-        return;
-    }
-
-    if (item.customizationOptions && item.customizationOptions.length > 0) {
-        showItemCustomizationModal(item);
-        return; 
+    if (existingItem) {
+        existingItem.quantity += 1;
     } else {
-        const existingItem = currentOrder.items.find(i => i.id === itemId && (!i.selectedCustomizations || i.selectedCustomizations.length === 0));
-        if (existingItem) {
-            existingItem.quantity += 1;
-            existingItem.totalPrice = existingItem.price * existingItem.quantity;
-        } else {
-            currentOrder.items.push({ ...item, quantity: 1, selectedCustomizations: [], totalPrice: item.price });
-        }
+        currentOrder.items.push({ ...item, quantity: 1 });
     }
     
     updateOrderDisplay();
@@ -515,174 +429,34 @@ function updateOrderDisplay() {
                 </div>
             </div>
         `).join('');
-        if (orderItemsContainer) orderItemsContainer.innerHTML = itemHtml;
-
-        if (totalItemsElement) totalItemsElement.textContent = totalItems;
-        if (totalAmountElement) totalAmountElement.textContent = formatCurrency(totalAmount);
         
-        if (proceedPaymentBtn) {
-            proceedPaymentBtn.disabled = false;
-            proceedPaymentBtn.className = isMobile ?
-                'w-full flex items-center justify-center space-x-2 py-4 px-4 rounded-lg font-bold transition-all duration-200 bg-orange-600 hover:bg-orange-700 text-white' :
-                'w-full flex items-center justify-center space-x-2 py-3 px-4 rounded-lg font-medium transition-all duration-200 bg-orange-600 hover:bg-orange-700 text-white';
+        const totalItems = currentOrder.items.reduce((sum, item) => sum + item.quantity, 0);
+        const totalAmount = currentOrder.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        
+        currentOrder.subtotal = totalAmount;
+        currentOrder.total = totalAmount;
+        
+        totalItemsElement.textContent = totalItems;
+        totalAmountElement.textContent = formatCurrency(totalAmount);
+        
+        if (totalAmount > 0) {
+            amountInWordsElement.textContent = numberToWords(totalAmount) + ' Rupees Only';
+            amountInWordsContainer.classList.remove('hidden');
         }
-
-        if (isMobile) {
-            if (mobileCartButtonContainer) mobileCartButtonContainer.classList.remove('hidden');
-            if (mobileCartItemCount) mobileCartItemCount.textContent = `${totalItems} Item${totalItems > 1 ? 's' : ''}`;
-            if (mobileCartTotalAmount) mobileCartTotalAmount.textContent = formatCurrency(totalAmount);
-        } else {
-            if (amountInWordsContainer) {
-                if (totalAmount > 0) {
-                    amountInWordsElement.textContent = numberToWords(totalAmount) + ' Rupees Only';
-                    amountInWordsContainer.classList.remove('hidden');
-                } else {
-                    amountInWordsContainer.classList.add('hidden');
-                }
-            }
-            if (clearOrderBtn) clearOrderBtn.classList.remove('hidden');
-        }
+        
+        proceedPaymentBtn.disabled = false;
+        proceedPaymentBtn.className = 'w-full flex items-center justify-center space-x-2 py-3 px-4 rounded-lg font-medium transition-all duration-200 bg-orange-600 hover:bg-orange-700 text-white';
+        clearOrderBtn.classList.remove('hidden');
     }
+    
+    // Re-initialize Lucide icons for dynamically added content
     lucide.createIcons();
 }
 
-// Item Customization Modal
-function showItemCustomizationModal(item) {
-    const modal = document.getElementById('itemCustomizationModal');
-    const content = document.getElementById('itemCustomizationContent');
-
-    let tempSelectedCustomizations = [];
-
-    let modalHtml = `
-        <div class="flex items-center space-x-4 mb-4">
-            ${item.imageUrl ? `<img src="${item.imageUrl}" alt="${item.name}" class="w-16 h-16 rounded-lg object-cover" onerror="this.onerror=null;this.src='https://placehold.co/64x64/cccccc/333333?text=No+Image';">` : `<img src="https://placehold.co/64x64/cccccc/333333?text=No+Image" alt="No Image" class="w-16 h-16 rounded-lg object-cover">`}
-            <div>
-                <h3 class="text-xl font-bold text-gray-900">${item.name}</h3>
-                <p class="text-sm text-gray-600">${item.description}</p>
-                <p class="text-lg font-semibold text-orange-600 mt-1">Base Price: ${formatCurrency(item.price)}</p>
-            </div>
-        </div>
-        <div class="space-y-4" id="customizationOptionsContainer">
-            <!-- Customization options will be rendered here -->
-        </div>
-        <div class="mt-6 flex justify-between items-center border-t pt-4">
-            <span class="text-xl font-bold text-gray-900">Total: <span id="customizationTotalPrice">${formatCurrency(item.price)}</span></span>
-            <button id="addCustomizedItemBtn" class="bg-orange-600 hover:bg-orange-700 text-white font-medium py-2 px-4 rounded-lg">
-                Add to Order
-            </button>
-        </div>
-    `;
-    if (content) content.innerHTML = modalHtml;
-
-    const optionsContainer = document.getElementById('customizationOptionsContainer');
-    const customizationTotalPriceSpan = document.getElementById('customizationTotalPrice');
-    let currentCustomizationPrice = item.price;
-
-    function updateCustomizationTotal() {
-        currentCustomizationPrice = item.price;
-        tempSelectedCustomizations.forEach(custom => {
-            currentCustomizationPrice += custom.price;
-        });
-        if (customizationTotalPriceSpan) customizationTotalPriceSpan.textContent = formatCurrency(currentCustomizationPrice);
-    }
-
-    let optionsHtml = '';
-    item.customizationOptions.forEach(option => {
-        if (option.type === 'heading') {
-            optionsHtml += `<h4 class="font-semibold text-gray-800 mt-4 mb-2">${option.name}</h4>`;
-        } else if (option.type === 'checkbox') {
-            optionsHtml += `
-                <label class="flex items-center justify-between py-2 border-b border-gray-200 last:border-b-0 cursor-pointer">
-                    <span class="text-gray-700">${option.name}</span>
-                    <div class="flex items-center space-x-2">
-                        <input type="checkbox" data-name="${option.name}" data-price="${option.price}" class="form-checkbox h-5 w-5 text-orange-600 rounded focus:ring-orange-500">
-                        <span class="text-sm text-gray-500">${option.price === 0 ? 'Free' : formatCurrency(option.price)}</span>
-                    </div>
-                </label>
-            `;
-        } else if (option.type === 'radio' && option.options) {
-            optionsHtml += `
-                <div class="mb-3">
-                    <h4 class="font-semibold text-gray-800 mb-2">${option.name}</h4>
-                    ${option.options.map((radioOption, index) => {
-                        return `
-                            <label class="flex items-center justify-between py-2 border-b border-gray-200 last:border-b-0 cursor-pointer">
-                                <span class="text-gray-700">${radioOption.label}</span>
-                                <div class="flex items-center space-x-2">
-                                    <input type="radio" name="radio-${item.id}-${option.name.replace(/\s/g, '-')}" value="${radioOption.label}" data-name="${option.name}" data-label="${radioOption.label}" data-price="${radioOption.price}" class="form-radio h-5 w-5 text-orange-600 focus:ring-orange-500" ${index === 0 ? 'checked' : ''}>
-                                    <span class="text-sm text-gray-500">${radioOption.price === 0 ? 'Free' : formatCurrency(radioOption.price)}</span>
-                                </div>
-                            </label>
-                        `;
-                    }).join('')}
-                </div>
-            `;
-            const defaultRadioOption = option.options[0];
-            tempSelectedCustomizations.push({
-                name: option.name,
-                label: defaultRadioOption.label,
-                price: defaultRadioOption.price,
-                type: 'radio'
-            });
-        }
-    });
-    if (optionsContainer) optionsContainer.innerHTML = optionsHtml;
-
-    if (optionsContainer) {
-        optionsContainer.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
-            checkbox.addEventListener('change', function() {
-                const custom = { name: this.dataset.name, price: parseFloat(this.dataset.price), type: 'checkbox' };
-                if (this.checked) {
-                    tempSelectedCustomizations.push(custom);
-                } else {
-                    tempSelectedCustomizations = tempSelectedCustomizations.filter(c => c.name !== custom.name);
-                }
-                updateCustomizationTotal();
-            });
-        });
-
-        optionsContainer.querySelectorAll('input[type="radio"]').forEach(radio => {
-            radio.addEventListener('change', function() {
-                tempSelectedCustomizations = tempSelectedCustomizations.filter(c => c.name !== this.dataset.name);
-                tempSelectedCustomizations.push({
-                    name: this.dataset.name,
-                    label: this.dataset.label,
-                    price: parseFloat(this.dataset.price),
-                    type: 'radio'
-                });
-                updateCustomizationTotal();
-            });
-        });
-    }
-
-    updateCustomizationTotal();
-
-    const addCustomizedItemBtn = document.getElementById('addCustomizedItemBtn');
-    if (addCustomizedItemBtn) {
-        addCustomizedItemBtn.onclick = () => {
-            currentOrder.items.push({
-                ...item,
-                quantity: 1,
-                selectedCustomizations: [...tempSelectedCustomizations],
-                totalPrice: currentCustomizationPrice
-            });
-            updateOrderDisplay();
-            if (modal) modal.classList.add('hidden');
-            // Do NOT hide mobileMenuPage or allMenuPage here. The user wants them to stay visible.
-        };
-    }
-
-    const closeCustomizationModal = document.getElementById('closeCustomizationModal');
-    if (closeCustomizationModal) {
-        closeCustomizationModal.onclick = () => {
-            if (modal) modal.classList.add('hidden');
-        };
-    }
-
-    if (modal) modal.classList.remove('hidden');
-    lucide.createIcons();
+function clearOrder() {
+    currentOrder.items = [];
+    updateOrderDisplay();
 }
-
 
 // Session and order type management
 function initializeSessionButtons() {
@@ -843,7 +617,7 @@ function showMobileCartModal() {
 
 
 function updateSessionInfo() {
-    const sessionItems = window.fetchedMenuItems.filter(item => Array.isArray(item.sessions) && item.sessions.includes(currentOrder.session));
+    const sessionItems = menuItems.filter(item => item.sessions.includes(currentOrder.session));
     const sessionCount = sessionItems.length;
 
     const searchInput = document.getElementById('searchInput');
@@ -885,94 +659,24 @@ function initializeNavigation() {
 
     const orderInterface = document.getElementById('orderInterface');
     const reportsInterface = document.getElementById('reportsInterface');
-    const mobileMenuPage = document.getElementById('mobileMenuPage');
-    const allMenuPage = document.getElementById('allMenuPage');
-
-    const hideAllInterfaces = () => {
-        if (orderInterface) orderInterface.classList.add('hidden');
-        if (reportsInterface) reportsInterface.classList.add('hidden');
-        if (mobileMenuPage) mobileMenuPage.classList.add('hidden');
-        if (allMenuPage) allMenuPage.classList.add('hidden');
-    };
-
-    const resetNavButtons = () => {
-        [orderBtn, reportsBtn, allMenuBtn].forEach(btn => {
-            if (btn) btn.className = 'w-full flex items-center space-x-2 py-2 rounded-lg font-medium transition-colors duration-200 bg-gray-200 text-gray-700 hover:bg-gray-300';
-        });
-    };
-
-    if (orderBtn) {
-        orderBtn.addEventListener('click', function() {
-            hideAllInterfaces();
-            if (orderInterface) orderInterface.classList.remove('hidden');
-            resetNavButtons();
-            this.className = 'w-full flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-colors duration-200 bg-orange-600 text-white';
-            localStorage.setItem('lastPage', 'order');
-        });
-    }
     
-    if (reportsBtn) {
-        reportsBtn.addEventListener('click', async function() {
-            hideAllInterfaces();
-            showAdminLoginModal(); // This will handle showing reportsInterface on success
-            resetNavButtons();
-            this.className = 'w-full flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-colors duration-200 bg-orange-600 text-white';
-            localStorage.setItem('lastPage', 'reports');
-        });
-    }
-
-    if (allMenuBtn) {
-        allMenuBtn.addEventListener('click', () => {
-            hideAllInterfaces();
-            if (allMenuPage) allMenuPage.classList.remove('hidden');
-            showAllMenuItems();
-            resetNavButtons();
-            this.className = 'w-full flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-colors duration-200 bg-orange-600 text-white';
-            localStorage.setItem('lastPage', 'allMenu');
-        });
-    }
-
-    // Mobile Navigation
-    if (mobileNavReports) {
-        mobileNavReports.addEventListener('click', () => {
-            hideAllInterfaces();
-            showAdminLoginModal();
-        });
-    }
+    orderBtn.addEventListener('click', function() {
+        orderInterface.classList.remove('hidden');
+        reportsInterface.classList.add('hidden');
+        
+        orderBtn.className = 'flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-colors duration-200 bg-orange-600 text-white';
+        reportsBtn.className = 'flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-colors duration-200 bg-gray-200 text-gray-700 hover:bg-gray-300';
+    });
     
-    if (mobileNavMenu) {
-        mobileNavMenu.addEventListener('click', () => {
-            hideAllInterfaces();
-            if (orderInterface) orderInterface.classList.remove('hidden');
-        });
-    }
-
-    if (mobileNavAllMenu) {
-        mobileNavAllMenu.addEventListener('click', () => {
-            hideAllInterfaces();
-            if (allMenuPage) allMenuPage.classList.remove('hidden');
-            showAllMenuItems();
-        });
-    }
-
-    if (backToOrderFromAllMenuBtn) {
-        backToOrderFromAllMenuBtn.addEventListener('click', () => {
-            if (allMenuPage) allMenuPage.classList.add('hidden');
-            if (orderInterface) orderInterface.classList.remove('hidden');
-            showSessionItems();
-            document.getElementById('searchInput').value = '';
-        });
-    }
-    // Mobile back button for session menu page
-    const mobileBackToOrderBtn = document.getElementById('backToOrderBtn');
-    if (mobileBackToOrderBtn) {
-        mobileBackToOrderBtn.addEventListener('click', () => {
-            if (mobileMenuPage) mobileMenuPage.classList.add('hidden');
-            if (orderInterface) orderInterface.classList.remove('hidden');
-            showSessionItems();
-            document.getElementById('searchInput').value = '';
-        });
-    }
+    reportsBtn.addEventListener('click', function() {
+        reportsInterface.classList.remove('hidden');
+        orderInterface.classList.add('hidden');
+        
+        reportsBtn.className = 'flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-colors duration-200 bg-orange-600 text-white';
+        orderBtn.className = 'flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-colors duration-200 bg-gray-200 text-gray-700 hover:bg-gray-300';
+        
+        loadReports();
+    });
 }
 
 // Payment functionality
@@ -981,16 +685,16 @@ function initializePayment() {
     const mobileProceedPaymentBtn = document.getElementById('mobileProceedPaymentBtn');
     const paymentModal = document.getElementById('paymentModal');
     const closePaymentModal = document.getElementById('closePaymentModal');
-    const clearOrderBtn = document.getElementById('clearOrderBtn');
 
     const handleProceedPayment = async () => {
         if (currentOrder.items.length === 0) return;
-        currentOrder.customerName = document.getElementById('customerName')?.value || '';
-        currentOrder.customerPhone = document.getElementById('customerPhone')?.value || '';
-        currentOrder.billNo = await generateBillNumber(); // Ensure bill number is generated/reused
-        const billNoInput = document.getElementById('billNo');
-        if (billNoInput) billNoInput.value = currentOrder.billNo;
+
+        // Update customer info
+        currentOrder.customerName = document.getElementById('customerName').value;
+        currentOrder.customerPhone = document.getElementById('customerPhone').value;
+        currentOrder.billNo = generateBillNumber();
         currentOrder.timestamp = new Date().toISOString();
+
         showPaymentModal();
     };
 
@@ -1103,7 +807,7 @@ function initializePaymentMethods() {
     const splitPaymentDetails = document.getElementById('splitPaymentDetails');
     const completePaymentBtn = document.getElementById('completePaymentBtn');
 
-    let paymentMethod = 'cash';
+    let paymentMethod = 'cash'; // Default to cash
 
     if (cashOnlyBtn) cashOnlyBtn.addEventListener('click', function() {
         paymentMethod = 'cash';
@@ -1140,11 +844,9 @@ function updatePaymentMethodButtons(selectedMethod) {
     });
 
     const selectedBtn = document.getElementById(selectedMethod === 'cash' ? 'cashOnlyBtn' :
-                                             selectedMethod === 'online' ? 'onlineOnlyBtn' : 'splitPaymentBtn');
-    if (selectedBtn) {
-        selectedBtn.classList.remove('border-gray-300', 'text-gray-700');
-        selectedBtn.classList.add('border-green-600', 'bg-green-50', 'text-green-700');
-    }
+                                              selectedMethod === 'online' ? 'onlineOnlyBtn' : 'splitPaymentBtn');
+    selectedBtn.classList.remove('border-gray-300', 'text-gray-700');
+    selectedBtn.classList.add('border-green-600', 'bg-green-50', 'text-green-700');
 }
 
 function initializeSplitPayment() {
@@ -1176,13 +878,9 @@ function initializeSplitPayment() {
         if (onlineAmountInput) onlineAmountInput.value = Math.max(0, currentOrder.total - cashAmount);
         updateRemaining();
     });
-
-    if (onlineAmountInput) onlineAmountInput.value = 0;
-    if (cashAmountInput) cashAmountInput.value = currentOrder.total;
-    updateRemaining();
 }
 
-async function completePayment(paymentMethod) {
+function completePayment(paymentMethod) {
     let onlinePayment = 0;
     let cashPayment = 0;
 
@@ -1195,7 +893,7 @@ async function completePayment(paymentMethod) {
         cashPayment = parseFloat(document.getElementById('cashAmount')?.value) || 0;
 
         if (onlinePayment + cashPayment !== currentOrder.total) {
-            window.showCustomAlert('Payment amounts do not match the total. Please check and try again.');
+            alert('Payment amounts do not match the total. Please check and try again.');
             return;
         }
     }
@@ -1205,10 +903,12 @@ async function completePayment(paymentMethod) {
         onlinePayment,
         cashPayment,
         paymentMethod,
-        completedAt: new Date().toISOString()
+        completedAt: new Date().toISOString() // Use ISO string for consistent date storage
     };
 
-    const success = await saveOrderToFirestore(completedOrder);
+    // Save to localStorage
+    orders.unshift(completedOrder);
+    localStorage.setItem('madurai_mess_orders', JSON.stringify(orders));
 
     if (!success) {
         return;
@@ -1259,159 +959,88 @@ function generateReceiptHTML(order) {
         <head>
             <title>Receipt - ${order.billNo}</title>
             <style>
-                body {
-                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                    font-size: 10px;
-                    line-height: 1.4;
-                    color: #333;
-                    margin: 0;
-                    padding: 20px;
-                    max-width: 300px;
-                    margin: auto;
-                    box-sizing: border-box;
-                }
-                .header, .footer {
-                    text-align: center;
-                    margin-bottom: 15px;
-                }
-                .header h1 {
-                    font-size: 1.8em;
-                    margin: 5px 0;
-                    color: #e54a00;
-                }
-                .header p {
-                    font-size: 0.9em;
-                    margin: 2px 0;
-                    color: #666;
-                }
-                .divider {
-                    border-top: 1px dashed #aaa;
-                    margin: 15px 0;
-                }
-                .info-table, .items-table, .summary-table {
-                    width: 100%;
-                    border-collapse: collapse;
-                    margin-bottom: 10px;
-                }
-                .info-table td, .summary-table td {
-                    padding: 4px 0;
-                    vertical-align: top;
-                }
-                .items-table th, .items-table td {
-                    text-align: left;
-                    padding: 4px 0;
-                    border-bottom: 1px dashed #ccc;
-                }
-                .items-table th:nth-child(2), .items-table td:nth-child(2) { text-align: center; }
-                .items-table th:nth-child(3), .items-table td:nth-child(3) { text-align: right; }
-                .items-table th:nth-child(4), .items-table td:nth-child(4) { text-align: right; }
-                .text-right { text-align: right; }
-                .text-center { text-align: center; }
-                .font-bold { font-weight: bold; }
-                .text-lg { font-size: 1.1em; }
-                .total-line {
-                    border-top: 2px solid #333;
-                    font-weight: bold;
-                    padding-top: 5px !important;
-                }
+                body { font-family: 'Courier New', monospace; font-size: 12px; margin: 0; padding: 20px; }
+                .receipt { max-width: 300px; margin: 0 auto; }
+                .header { text-align: center; margin-bottom: 20px; }
+                .header h1 { margin: 0; font-size: 18px; font-weight: bold; }
+                .header p { margin: 2px 0; font-size: 10px; }
+                .divider { border-top: 1px dashed #000; margin: 10px 0; }
+                .info-row { display: flex; justify-content: space-between; margin: 2px 0; }
+                table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+                th, td { padding: 4px 0; font-size: 11px; }
+                th { border-bottom: 1px solid #000; font-weight: bold; }
+                .total-row { border-top: 1px solid #000; font-weight: bold; }
+                .footer { text-align: center; margin-top: 20px; font-size: 10px; }
                 @media print {
-                    body {
-                        margin: 0;
-                        padding: 0;
-                    }
-                    @page {
-                        margin: 0;
-                    }
+                    body { margin: 0; padding: 10px; }
+                    .no-print { display: none; }
                 }
             </style>
         </head>
         <body>
-            <div class="header">
-                <h1>MADURAI MESS</h1>
-                <p>123, Main Road, Madurai - 625001</p>
-                <p>Mob: +91 98765 43210</p>
-            </div>
-            <div class="divider"></div>
-            <table class="info-table">
-                <tr>
-                    <td>Bill No:</td>
-                    <td class="text-right">${order.billNo}</td>
-                </tr>
-                <tr>
-                    <td>Date:</td>
-                    <td class="text-right">${new Date(order.completedAt).toLocaleDateString('en-IN')}</td>
-                </tr>
-                <tr>
-                    <td>Time:</td>
-                    <td class="text-right">${new Date(order.completedAt).toLocaleTimeString('en-IN')}</td>
-                </tr>
-                ${order.orderType === 'dine-in' ? `
-                <tr>
-                    <td>Order Type:</td>
-                    <td class="text-right">Dine-In</td>
-                </tr>
-                ` : `
-                <tr>
-                    <td>Order Type:</td>
-                    <td class="text-right">Parcel</td>
-                </tr>
-                `}
-                ${order.customerName ? `
-                <tr>
-                    <td>Customer:</td>
-                    <td class="text-right">${order.customerName}</td>
-                </tr>` : ''}
-                ${order.customerPhone ? `
-                <tr>
-                    <td>Phone:</td>
-                    <td class="text-right">${order.customerPhone}</td>
-                </tr>` : ''}
-            </table>
-            <div class="divider"></div>
-            <table class="items-table">
-                <thead>
-                    <tr>
-                        <th>Item</th>
-                        <th class="text-center">QTY</th>
-                        <th class="text-right">Price</th>
-                        <th class="text-right">Amount</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${itemsHTML}
-                </tbody>
-            </table>
-            <div class="divider"></div>
-            <table class="summary-table">
-                <tr>
-                    <td>No. of Items:</td>
-                    <td class="text-right font-bold">${order.items.reduce((sum, item) => sum + item.quantity, 0)}</td>
-                </tr>
-                <tr class="total-line">
-                    <td class="text-lg">Total Amount:</td>
-                    <td class="text-lg text-right font-bold">${formatCurrency(order.total)}</td>
-                </tr>
-                <tr>
-                    <td colspan="2" style="padding-top: 5px;">
-                        <div class="font-bold">Amount in Words:</div>
-                        <div>${numberToWords(order.total)} Rupees Only</div>
-                    </td>
-                </tr>
-                ${order.onlinePayment > 0 ? `
-                <tr>
-                    <td>Online Paid:</td>
-                    <td class="text-right">${formatCurrency(order.onlinePayment)}</td>
-                </tr>` : ''}
-                ${order.cashPayment > 0 ? `
-                <tr>
-                    <td>Cash Paid:</td>
-                    <td class="text-right">${formatCurrency(order.cashPayment)}</td>
-                </tr>` : ''}
-            </table>
-            <div class="divider"></div>
-            <div class="footer">
-                <p>Thank you for your visit!</p>
-                <p style="font-size:0.8em; color:#888;">Powered by Madurai Mess POS</p>
+            <div class="receipt">
+                <div class="header">
+                    <h1>MADURAI MESS</h1>
+                    <p>MEALS and MEMORIES are made here</p>
+                    <p>Contact: +91 98765 43210</p>
+                </div>
+
+                <div class="divider"></div>
+
+                <div class="info-row">
+                    <span>Bill No:</span>
+                    <span>${order.billNo}</span>
+                </div>
+                <div class="info-row">
+                    <span>Date:</span>
+                    <span>${formatDate(order.timestamp)}</span>
+                </div>
+                <div class="info-row">
+                    <span>Session:</span>
+                    <span>${order.session.charAt(0).toUpperCase() + order.session.slice(1)}</span>
+                </div>
+                <div class="info-row">
+                    <span>Order Type:</span>
+                    <span>${order.orderType.replace('-', ' ').toUpperCase()}</span>
+                </div>
+                ${order.customerName ? `<div class="info-row"><span>Customer:</span><span>${order.customerName}</span></div>` : ''}
+                ${order.customerPhone ? `<div class="info-row"><span>Phone:</span><span>${order.customerPhone}</span></div>` : ''}
+
+                <div class="divider"></div>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="text-align: left;">Item</th>
+                            <th style="text-align: center;">Qty</th>
+                            <th style="text-align: right;">Rate</th>
+                            <th style="text-align: right;">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${itemsHTML}
+                        <tr class="total-row">
+                            <td colspan="3" style="padding: 8px 0; text-align: right; font-weight: bold;">TOTAL:</td>
+                            <td style="padding: 8px 0; text-align: right; font-weight: bold;">${formatCurrency(order.total)}</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="divider"></div>
+
+                <div style="margin: 10px 0;">
+                    <div style="font-weight: bold; margin-bottom: 5px;">Payment Details:</div>
+                    ${order.cashPayment > 0 ? `<div class="info-row"><span>Cash:</span><span>${formatCurrency(order.cashPayment)}</span></div>` : ''}
+                    ${order.onlinePayment > 0 ? `<div class="info-row"><span>Online:</span><span>${formatCurrency(order.onlinePayment)}</span></div>` : ''}
+                </div>
+
+                <div class="divider"></div>
+
+                <div class="footer">
+                    <p>Thank you for visiting Madurai Mess!</p>
+                    <p>Visit us again for authentic South Indian cuisine</p>
+                    <p style="margin-top: 10px;">*** HAVE A GREAT DAY ***</p>
+                </div>
             </div>
         </body>
         </html>
@@ -1419,100 +1048,162 @@ function generateReceiptHTML(order) {
 }
 
 // Enhanced Reports functionality with analytics
-async function loadReports() {
-    const reportsContentDiv = document.getElementById('reportsContent');
+function loadReports() {
     const reportsInterface = document.getElementById('reportsInterface');
-    if (!reportsContentDiv || !reportsInterface) {
-        console.error("Reports content container or interface not found.");
-        return;
-    }
 
-    if (!window.isAdminLoggedIn) {
-        showAdminLoginModal();
-        reportsInterface.classList.add('hidden');
-        return;
-    }
-
-    reportsContentDiv.innerHTML = '<div class="text-center py-8 text-gray-500">Loading reports data...</div>';
-
-    await fetchOrdersForReports(null, null, 'all');
-
+    // Get current date and calculate periods
     const today = new Date();
     const todayStr = today.toISOString().split('T')[0];
     const thisWeek = getWeekRange(today);
     const thisMonth = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0');
     const thisYear = today.getFullYear().toString();
 
-    const todayOrders = allOrdersForReports.filter(order => order.completedAt && order.completedAt.startsWith(todayStr));
-    const weekOrders = allOrdersForReports.filter(order => order.completedAt && isDateInRange(order.completedAt, thisWeek.start, thisWeek.end));
-    const monthOrders = allOrdersForReports.filter(order => order.completedAt && order.completedAt.startsWith(thisMonth));
-    const yearOrders = allOrdersForReports.filter(order => order.completedAt && order.completedAt.startsWith(thisYear));
+    // Calculate comprehensive statistics
+    const todayOrders = orders.filter(order => order.timestamp && order.timestamp.startsWith(todayStr));
+    const weekOrders = orders.filter(order => order.timestamp && isDateInRange(order.timestamp, thisWeek.start, thisWeek.end));
+    const monthOrders = orders.filter(order => order.timestamp && order.timestamp.startsWith(thisMonth));
+    const yearOrders = orders.filter(order => order.timestamp && order.timestamp.startsWith(thisYear));
 
     const stats = {
         today: calculatePeriodStats(todayOrders),
         week: calculatePeriodStats(weekOrders),
         month: calculatePeriodStats(monthOrders),
-        year: calculatePeriodStats(yearOrders),
-        filtered: null
+        year: calculatePeriodStats(yearOrders)
     };
 
+    reportsInterface.innerHTML = `
+        <div class="space-y-6">
+            <!-- Period Selection -->
+            <div class="bg-white rounded-lg shadow-md border border-gray-200 p-6">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">Analytics Dashboard</h3>
+                <div class="flex flex-wrap gap-2 mb-4">
+                    <button onclick="showPeriodStats('today')" id="todayBtn" class="px-4 py-2 bg-orange-600 text-white rounded-lg font-medium">Today</button>
+                    <button onclick="showPeriodStats('week')" id="weekBtn" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300">This Week</button>
+                    <button onclick="showPeriodStats('month')" id="monthBtn" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300">This Month</button>
+                    <button onclick="showPeriodStats('year')" id="yearBtn" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300">This Year</button>
+                </div>
+                <div id="periodStatsContainer">
+                    <!-- Period stats will be loaded here -->
+                </div>
+            </div>
+
+            <!-- Charts Section -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Revenue Chart -->
+                <div class="bg-white rounded-lg shadow-md border border-gray-200 p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Revenue Trend</h3>
+                    <canvas id="revenueChart" width="400" height="200"></canvas>
+                </div>
+
+                <!-- Session Distribution -->
+                <div class="bg-white rounded-lg shadow-md border border-gray-200 p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Session Distribution</h3>
+                    <canvas id="sessionChart" width="400" height="200"></canvas>
+                </div>
+
+                <!-- Payment Methods -->
+                <div class="bg-white rounded-lg shadow-md border border-gray-200 p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Payment Methods</h3>
+                    <canvas id="paymentChart" width="400" height="200"></canvas>
+                </div>
+
+                <!-- Top Items -->
+                <div class="bg-white rounded-lg shadow-md border border-gray-200 p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Top Selling Items</h3>
+                    <canvas id="topItemsChart" width="400" height="200"></canvas>
+                </div>
+            </div>
+
+            <!-- Recent Orders -->
+            <div class="bg-white rounded-lg shadow-md border border-gray-200 p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold text-gray-900">Recent Orders</h3>
+                    <button onclick="exportReports()" class="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
+                        Export Data
+                    </button>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Bill No</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date & Time</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Session</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Items</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            ${orders.slice(0, 20).map(order => `
+                                <tr>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${order.billNo}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${formatDate(order.timestamp)}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${order.customerName || 'Walk-in'}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 capitalize">${order.session}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${order.items.reduce((sum, item) => sum + item.quantity, 0)} items</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${formatCurrency(order.total)}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        ${order.cashPayment > 0 && order.onlinePayment > 0 ? 'Split' :
+                                          order.cashPayment > 0 ? 'Cash' : 'Online'}
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                        <button onclick="showReceipt(${JSON.stringify(order).replace(/"/g, '&quot;')})" class="text-orange-600 hover:text-orange-900">
+                                            View Receipt
+                                        </button>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+
+                ${orders.length === 0 ? '<p class="text-center text-gray-500 py-8">No orders found</p>' : ''}
+            </div>
+        </div>
+    `;
+
+    // Store stats globally for chart functions
     window.reportStats = stats;
 
-    renderReportChartsAndTable();
-
+    // Initialize with today's stats
     showPeriodStats('today');
 
-    renderDailyItemSales(todayOrders);
-
+    // Re-initialize Lucide icons
     lucide.createIcons();
 }
 
-/**
- * Updates the summary cards with the given statistics.
- * @param {object} stats - The statistics object for the current period.
- */
-function updateAnalyticsSummaryCards(stats) {
-    document.getElementById('summaryTotalOrders').textContent = stats.totalOrders;
-    document.getElementById('summaryTotalRevenue').textContent = formatCurrency(stats.totalRevenue);
-    document.getElementById('summaryAverageOrder').textContent = formatCurrency(stats.averageOrderValue);
-    document.getElementById('summaryTopItemName').textContent = stats.topItems[0]?.name || 'No data';
-    document.getElementById('summaryTopItemCount').textContent = `${stats.topItems[0]?.count || 0} sold`;
+// Period statistics display
+function showPeriodStats(period) {
+    const stats = window.reportStats[period];
+    const container = document.getElementById('periodStatsContainer');
 
-    document.getElementById('sessionMorningOrders').textContent = `${stats.sessionStats.morning} orders`;
-    document.getElementById('sessionAfternoonOrders').textContent = `${stats.sessionStats.afternoon} orders`;
-    document.getElementById('sessionNightOrders').textContent = `${stats.sessionStats.night} orders`;
+    // Update button states
+    ['today', 'week', 'month', 'year'].forEach(p => {
+        const btn = document.getElementById(p + 'Btn');
+        if (p === period) {
+            btn.className = 'px-4 py-2 bg-orange-600 text-white rounded-lg font-medium';
+        } else {
+            btn.className = 'px-4 py-2 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300';
+        }
+    });
 
-    document.getElementById('orderTypeDineIn').textContent = `${stats.orderTypeStats.dineIn} orders`;
-    document.getElementById('orderTypeParcel').textContent = `${stats.orderTypeStats.parcel} orders`;
+    const periodName = period.charAt(0).toUpperCase() + period.slice(1);
 
-    document.getElementById('paymentCash').textContent = formatCurrency(stats.cashPayments);
-    document.getElementById('paymentOnline').textContent = formatCurrency(stats.onlinePayments);
-}
-
-
-/**
- * Renders the structure for charts and the detailed sales table.
- * This function should be called once when reports interface is loaded.
- */
-function renderReportChartsAndTable() {
-    const reportsContentDiv = document.getElementById('reportsContent');
-    if (!reportsContentDiv) return;
-
-    const initialStats = window.reportStats.today || calculatePeriodStats([]);
-
-    reportsContentDiv.innerHTML = `
-        <div class="space-y-6">
-            <!-- Analytics Dashboard Summary Cards -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-                <div class="bg-gradient-to-r from-blue-500 to-blue-600 p-6 rounded-lg text-white">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-blue-100 text-sm">Total Orders</p>
-                            <p class="text-3xl font-bold" id="summaryTotalOrders">${initialStats.totalOrders}</p>
-                        </div>
-                        <i data-lucide="shopping-cart" class="h-8 w-8 text-blue-200"></i>
+    container.innerHTML = `
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+            <div class="bg-gradient-to-r from-blue-500 to-blue-600 p-6 rounded-lg text-white">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-blue-100 text-sm">${periodName} Orders</p>
+                        <p class="text-3xl font-bold">${stats.totalOrders}</p>
                     </div>
+                    <i data-lucide="shopping-cart" class="h-8 w-8 text-blue-200"></i>
                 </div>
+            </div>
 
                 <div class="bg-gradient-to-r from-green-500 to-green-600 p-6 rounded-lg text-white">
                     <div class="flex items-center justify-between">
@@ -1714,13 +1405,10 @@ async function filterReportsByPeriod() {
 // Chart management
 let charts = {};
 
-/**
- * Updates all charts based on the selected period's statistics.
- * @param {string} period - 'today', 'week', 'month', 'year', or 'filtered'
- */
 function updateCharts(period) {
     const stats = window.reportStats[period];
 
+    // Destroy existing charts
     Object.values(charts).forEach(chart => {
         if (chart) chart.destroy();
     });
@@ -1736,13 +1424,15 @@ function updateCharts(period) {
  * @param {string} period - The selected period ('today', 'week', 'month', 'year')
  */
 function createRevenueChart(period) {
-    const ctx = document.getElementById('revenueChart')?.getContext('2d');
-    if (!ctx) return;
+    const ctx = document.getElementById('revenueChart').getContext('2d');
 
     const labels = [];
     const data = [];
 
+    // Filter data based on the selected period from allOrdersForReports
+    let relevantOrders = [];
     if (period === 'today') {
+        // Last 7 days
         for (let i = 6; i >= 0; i--) {
             const date = new Date();
             date.setDate(date.getDate() - i);
@@ -1752,14 +1442,14 @@ function createRevenueChart(period) {
             data.push(dayOrders.reduce((sum, order) => sum + order.total, 0));
         }
     } else if (period === 'week') {
+        // Last 4 weeks
         for (let i = 3; i >= 0; i--) {
             const date = new Date();
             date.setDate(date.getDate() - (i * 7));
             labels.push(`Week ${date.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })}`);
 
             const weekStart = new Date(date);
-            weekStart.setDate(date.getDate() - date.getDay() + (date.getDay() === 0 ? -6 : 1));
-            weekStart.setHours(0,0,0,0);
+            weekStart.setDate(date.getDate() - date.getDay());
             const weekEnd = new Date(weekStart);
             weekEnd.setDate(weekStart.getDate() + 6);
             weekEnd.setHours(23,59,59,999);
@@ -1771,7 +1461,8 @@ function createRevenueChart(period) {
             });
             data.push(weekOrders.reduce((sum, order) => sum + order.total, 0));
         }
-    } else if (period === 'month' || period === 'year' || period === 'filtered') {
+    } else {
+        // Last 6 months
         for (let i = 5; i >= 0; i--) {
             const date = new Date();
             date.setMonth(date.getMonth() - i);
@@ -1784,6 +1475,7 @@ function createRevenueChart(period) {
             data.push(monthOrders.reduce((sum, order) => sum + order.total, 0));
         }
     }
+
 
     charts.revenue = new Chart(ctx, {
         type: 'line',
@@ -1950,9 +1642,9 @@ function exportReports() {
 function generateCSVReport() {
     const headers = ['Bill No', 'Date', 'Time', 'Customer Name', 'Phone', 'Session', 'Order Type', 'Total Items', 'Total Amount', 'Cash Payment', 'Online Payment', 'Payment Method'];
 
-    const rows = allOrdersForReports.map(order => {
-        const date = new Date(order.completedAt);
-        const totalItemsInOrder = order.items.reduce((sum, item) => sum + item.quantity, 0);
+    const rows = orders.map(order => {
+        const date = new Date(order.timestamp);
+        const itemsList = order.items.map(item => `${item.name} (${item.quantity})`).join('; ');
 
         return [
             order.billNo,
@@ -2089,82 +1781,36 @@ function clearOrder() {
         timestamp: null
     };
 
-    generateBillNumber().then(newBillNo => {
-        currentOrder.billNo = newBillNo;
-        const billNoInput = document.getElementById('billNo');
-        if (billNoInput) {
-            billNoInput.value = currentOrder.billNo;
-        }
-    }).catch(error => {
-        console.error("Error generating bill number on clear order:", error);
-        const billNoInput = document.getElementById('billNo');
-        if (billNoInput) {
-            billNoInput.value = "ERROR";
-        }
-    });
+    // Clear form fields
+    document.getElementById('billNo').value = '';
+    document.getElementById('customerName').value = '';
+    document.getElementById('customerPhone').value = '';
+    document.getElementById('searchInput').value = '';
+    document.getElementById('searchResults').classList.add('hidden');
 
-    const customerNameInput = document.getElementById('customerName');
-    if (customerNameInput && (!window.auth.currentUser || window.auth.currentUser.isAnonymous)) {
-        customerNameInput.value = '';
-    }
-    const customerPhoneInput = document.getElementById('customerPhone');
-    if (customerPhoneInput) {
-        customerPhoneInput.value = '';
-    }
-    const searchInput = document.getElementById('searchInput');
-    const searchResults = document.getElementById('searchResults');
-    if (searchInput) {
-        searchInput.value = '';
-    }
-    if (searchResults) {
-        searchResults.innerHTML = `
-            <div class="text-center py-8 text-gray-500">
-                <i data-lucide="soup" class="h-12 w-12 mx-auto mb-3 text-gray-300"></i>
-                <p>Select a session or search for items</p>
-            </div>
-        `;
-    }
-    lucide.createIcons();
-
+    // Reset session buttons
     document.querySelectorAll('.session-btn').forEach(btn => {
         btn.classList.remove('session-btn-active');
         btn.classList.add('session-btn-inactive');
     });
-    const morningSessionBtn = document.querySelector('[data-session="morning"]');
-    if (morningSessionBtn) {
-        morningSessionBtn.classList.remove('session-btn-inactive');
-        morningSessionBtn.classList.add('session-btn-active');
-        morningSessionBtn.click();
-    }
+    document.querySelector('[data-session="morning"]').classList.remove('session-btn-inactive');
+    document.querySelector('[data-session="morning"]').classList.add('session-btn-active');
 
+    // Reset order type buttons
     const dineInBtn = document.getElementById('dineInBtn');
     const parcelBtn = document.getElementById('parcelBtn');
-    if (dineInBtn && parcelBtn) {
-        dineInBtn.className = 'flex-1 flex items-center justify-center space-x-2 py-3 px-4 rounded-lg font-medium transition-all duration-200 border-2 border-orange-600 bg-orange-50 text-orange-700';
-        parcelBtn.className = 'flex-1 flex items-center justify-center space-x-2 py-3 px-4 rounded-lg font-medium transition-all duration-200 border-2 border-gray-300 hover:border-gray-400';
-    }
+    dineInBtn.className = 'flex items-center justify-center space-x-2 py-3 px-4 rounded-lg font-medium transition-all duration-200 border-2 border-orange-600 bg-orange-50 text-orange-700';
+    parcelBtn.className = 'flex items-center justify-center space-x-2 py-3 px-4 rounded-lg font-medium transition-all duration-200 border-2 border-gray-300 hover:border-gray-400';
 
     updateOrderDisplay();
 }
 
 // Initialize application
-async function startPosSystem() {
-    console.log("Firebase is ready. User ID:", window.userId);
+function initializeApp() {
+    // Set initial bill number
+    document.getElementById('billNo').value = generateBillNumber();
 
-    // Initialize bill number, prioritizing session storage
-    const storedBillNo = sessionStorage.getItem('currentBillNo');
-    if (storedBillNo) {
-        currentOrder.billNo = storedBillNo;
-    } else {
-        currentOrder.billNo = await generateBillNumber();
-    }
-    const billNoInput = document.getElementById('billNo');
-    if (billNoInput) {
-        billNoInput.value = currentOrder.billNo;
-    }
-
-    await fetchMenuItemsFromFirestore();
-
+    // Initialize all components
     initializeSearch();
     initializeSessionButtons();
     initializeOrderTypeButtons();
@@ -2176,354 +1822,14 @@ async function startPosSystem() {
 
     updateOrderDisplay();
 
-    const defaultSessionButton = document.querySelector('[data-session="morning"]');
-    if (defaultSessionButton) {
-        defaultSessionButton.click();
-    } else {
-        showSessionItems();
-        updateSessionInfo();
-    }
+    // Initialize session info
+    updateSessionInfo();
+    showSessionItems();
 
-    lucide.createIcons();
-
-    initializeAuthModals();
-
-    // Handle initial page load visibility based on localStorage
-    const orderInterface = document.getElementById('orderInterface');
-    const reportsInterface = document.getElementById('reportsInterface');
-    const allMenuPage = document.getElementById('allMenuPage');
-    const lastPage = localStorage.getItem('lastPage') || 'order';
-
-    // Hide all main interfaces first
-    if (orderInterface) orderInterface.classList.add('hidden');
-    if (reportsInterface) reportsInterface.classList.add('hidden');
-    if (allMenuPage) allMenuPage.classList.add('hidden');
-
-    // Show the appropriate interface
-    if (lastPage === 'reports' && window.isAdminLoggedIn) {
-        if (reportsInterface) reportsInterface.classList.remove('hidden');
-        await loadReports();
-    } else if (lastPage === 'allMenu') {
-        if (allMenuPage) allMenuPage.classList.remove('hidden');
-        showAllMenuItems();
-    } else { // Default to 'order' page
-        if (orderInterface) orderInterface.classList.remove('hidden');
-    }
-
-    // Ensure desktop nav buttons are correctly highlighted on load
-    const desktopOrderBtn = document.getElementById('orderBtn');
-    const desktopReportsBtn = document.getElementById('reportsBtn');
-    const desktopAllMenuBtn = document.getElementById('allMenuBtn');
-
-    if (desktopOrderBtn && desktopReportsBtn && desktopAllMenuBtn) {
-        desktopOrderBtn.className = 'w-full flex items-center space-x-2 py-2 rounded-lg font-medium transition-colors duration-200 bg-gray-200 text-gray-700 hover:bg-gray-300';
-        desktopReportsBtn.className = 'w-full flex items-center space-x-2 py-2 rounded-lg font-medium transition-colors duration-200 bg-gray-200 text-gray-700 hover:bg-gray-300';
-        desktopAllMenuBtn.className = 'w-full flex items-center space-x-2 py-2 rounded-lg font-medium transition-colors duration-200 bg-gray-200 text-gray-700 hover:bg-gray-300';
-
-        if (lastPage === 'order') {
-            desktopOrderBtn.classList.remove('bg-gray-200', 'text-gray-700', 'hover:bg-gray-300');
-            desktopOrderBtn.classList.add('bg-orange-600', 'text-white');
-        } else if (lastPage === 'reports') {
-            desktopReportsBtn.classList.remove('bg-gray-200', 'text-gray-700', 'hover:bg-gray-300');
-            desktopReportsBtn.classList.add('bg-orange-600', 'text-white');
-        } else if (lastPage === 'allMenu') {
-            desktopAllMenuBtn.classList.remove('bg-gray-200', 'text-gray-700', 'hover:bg-gray-300');
-            desktopAllMenuBtn.classList.add('bg-orange-600', 'text-white');
-        }
-    }
+    console.log('Madurai Mess POS System initialized successfully!');
 }
 
-// Expose startPosSystem globally so index.html can call it
-window.startPosSystem = startPosSystem;
-
-// --- User Authentication Modals ---
-let isSignUpMode = false;
-
-function initializeAuthModals() {
-    const userAuthModal = document.getElementById('userAuthModal');
-    const closeUserAuthModal = document.getElementById('closeUserAuthModal');
-    const authEmail = document.getElementById('authEmail');
-    const authPassword = document.getElementById('authPassword');
-    const authName = document.getElementById('authNameInput');
-    const authPhone = document.getElementById('authPhoneInput');
-    const authAge = document.getElementById('authAgeInput');
-    const authPrimaryBtn = document.getElementById('authPrimaryBtn');
-    const toggleAuthModeBtn = document.getElementById('toggleAuthModeBtn');
-    const userAuthModalTitle = document.getElementById('userAuthModalTitle');
-    const toggleAuthPasswordBtn = document.getElementById('toggleAuthPassword');
-
-    if (closeUserAuthModal) closeUserAuthModal.onclick = () => { if (userAuthModal) userAuthModal.classList.add('hidden'); };
-    if (toggleAuthModeBtn) toggleAuthModeBtn.onclick = () => toggleAuthMode();
-    if (authPrimaryBtn) authPrimaryBtn.onclick = handleAuthAction;
-
-    if (toggleAuthPasswordBtn && authPassword) {
-        toggleAuthPasswordBtn.addEventListener('click', () => {
-            if (authPassword.type === 'password') {
-                authPassword.type = 'text';
-                toggleAuthPasswordBtn.innerHTML = '<i data-lucide="eye-off" class="h-5 w-5"></i>';
-            } else {
-                authPassword.type = 'password';
-                toggleAuthPasswordBtn.innerHTML = '<i data-lucide="eye" class="h-5 w-5"></i>';
-            }
-            lucide.createIcons();
-        });
-    }
-
-    if (authPassword) {
-        authPassword.addEventListener('keypress', function(event) {
-            if (event.key === 'Enter') {
-                event.preventDefault();
-                handleAuthAction();
-            }
-        });
-    }
-    if (authEmail) {
-        authEmail.addEventListener('keypress', function(event) {
-            if (event.key === 'Enter') {
-                event.preventDefault();
-                if (isSignUpMode) {
-                    if (authPassword) authPassword.focus();
-                } else {
-                    handleAuthAction();
-                }
-            }
-        });
-    }
-    if (authName) {
-        authName.addEventListener('keypress', function(event) {
-            if (event.key === 'Enter') {
-                event.preventDefault();
-                if (authPhone) authPhone.focus();
-            }
-        });
-    }
-    if (authPhone) {
-        authPhone.addEventListener('keypress', function(event) {
-            if (event.key === 'Enter') {
-                event.preventDefault();
-                if (authAge) authAge.focus();
-            }
-        });
-    }
-    if (authAge) {
-        authAge.addEventListener('keypress', function(event) {
-            if (event.key === 'Enter') {
-                event.preventDefault();
-                handleAuthAction();
-            }
-        });
-    }
-
-    toggleAuthMode(false);
-}
-
-window.showUserAuthModal = (mode = 'login') => {
-    const userAuthModal = document.getElementById('userAuthModal');
-    if (userAuthModal) {
-        userAuthModal.classList.remove('hidden');
-        toggleAuthMode(mode === 'signup');
-    }
-};
-
-function toggleAuthMode(toSignUp = null) {
-    const authNameContainer = document.getElementById('authName');
-    const authPhoneContainer = document.getElementById('authPhone');
-    const authAgeContainer = document.getElementById('authAge');
-    const authPrimaryBtn = document.getElementById('authPrimaryBtn');
-    const toggleAuthModeBtn = document.getElementById('toggleAuthModeBtn');
-    const userAuthModalTitle = document.getElementById('userAuthModalTitle');
-    const authPassword = document.getElementById('authPassword');
-    const toggleAuthPasswordBtn = document.getElementById('toggleAuthPassword');
-
-    if (toSignUp !== null) {
-        isSignUpMode = toSignUp;
-    } else {
-        isSignUpMode = !isSignUpMode;
-    }
-
-    if (userAuthModalTitle) userAuthModalTitle.textContent = isSignUpMode ? 'Sign Up' : 'Login';
-    if (authNameContainer) authNameContainer.classList[isSignUpMode ? 'remove' : 'add']('hidden');
-    if (authPhoneContainer) authPhoneContainer.classList[isSignUpMode ? 'remove' : 'add']('hidden');
-    if (authAgeContainer) authAgeContainer.classList[isSignUpMode ? 'remove' : 'add']('hidden');
-    if (authPrimaryBtn) authPrimaryBtn.textContent = isSignUpMode ? 'Sign Up' : 'Login';
-    if (toggleAuthModeBtn) toggleAuthModeBtn.textContent = isSignUpMode ? 'Already have an account? Login' : "Don't have an account? Sign Up";
-    
-    const authEmail = document.getElementById('authEmail');
-    const authNameInput = document.getElementById('authNameInput');
-    const authPhoneInput = document.getElementById('authPhoneInput');
-    const authAgeInput = document.getElementById('authAgeInput');
-
-    if (authEmail) authEmail.value = '';
-    if (authPassword) authPassword.value = '';
-    if (authNameInput) authNameInput.value = '';
-    if (authPhoneInput) authPhoneInput.value = '';
-    if (authAgeInput) authAgeInput.value = '';
-    
-    if (authPassword) authPassword.type = 'password';
-    if (toggleAuthPasswordBtn) {
-        toggleAuthPasswordBtn.innerHTML = '<i data-lucide="eye" class="h-5 w-5"></i>';
-    }
-    lucide.createIcons();
-}
-
-async function handleAuthAction() {
-    const email = document.getElementById('authEmail')?.value;
-    const password = document.getElementById('authPassword')?.value;
-    const name = document.getElementById('authNameInput')?.value;
-    const phone = document.getElementById('authPhoneInput')?.value;
-    const age = document.getElementById('authAgeInput')?.value;
-
-    if (!email || !password) {
-        window.showCustomAlert("Email and password are required.");
-        return;
-    }
-
-    if (isSignUpMode) {
-        if (!name || !phone) {
-            window.showCustomAlert("Name and Phone Number are required for Sign Up.");
-            return;
-        }
-        try {
-            const userCredential = await window.createUserWithEmailAndPassword(window.auth, email, password);
-            const user = userCredential.user;
-            await window.setDoc(window.doc(window.db, "users", user.uid), {
-                name: name,
-                phone: phone,
-                email: email,
-                age: age || null,
-                createdAt: new Date().toISOString()
-            });
-            window.showCustomAlert("Sign Up successful! You are now logged in.");
-            const userAuthModal = document.getElementById('userAuthModal');
-            if (userAuthModal) {
-                userAuthModal.classList.add('hidden');
-            }
-        } catch (error) {
-            console.error("Sign Up error:", error);
-            window.showCustomAlert(`Sign Up failed: ${error.message}`);
-        }
-    } else {
-        try {
-            await window.signInWithEmailAndPassword(window.auth, email, password);
-            window.showCustomAlert("Login successful!");
-            const userAuthModal = document.getElementById('userAuthModal');
-            if (userAuthModal) {
-                userAuthModal.classList.add('hidden');
-            }
-        } catch (error) {
-            console.error("Login error:", error);
-            window.showCustomAlert(`Login failed: ${error.message}`);
-        }
-    }
-}
-
-
-// --- Admin Login Modal ---
-function showAdminLoginModal() {
-    const adminLoginModal = document.getElementById('adminLoginModal');
-    const closeAdminLoginModal = document.getElementById('closeAdminLoginModal');
-    const adminUsernameInput = document.getElementById('adminUsername');
-    const adminPasswordInput = document.getElementById('adminPassword');
-    const adminLoginBtn = document.getElementById('adminLoginBtn');
-    const toggleAdminPasswordBtn = document.getElementById('toggleAdminPassword');
-
-    if (adminUsernameInput) adminUsernameInput.value = '';
-    if (adminPasswordInput) adminPasswordInput.value = '';
-    
-    if (adminPasswordInput) adminPasswordInput.type = 'password';
-    if (toggleAdminPasswordBtn) {
-        toggleAdminPasswordBtn.innerHTML = '<i data-lucide="eye" class="h-5 w-5"></i>';
-    }
-    lucide.createIcons();
-
-    if (closeAdminLoginModal) closeAdminLoginModal.onclick = () => {
-        if (adminLoginModal) adminLoginModal.classList.add('hidden');
-        // If user closes admin login, revert to order page
-        document.getElementById('orderInterface')?.classList.remove('hidden');
-        document.getElementById('reportsInterface')?.classList.add('hidden');
-        document.getElementById('mobileMenuPage')?.classList.add('hidden');
-        document.getElementById('allMenuPage')?.classList.add('hidden');
-        localStorage.setItem('lastPage', 'order');
-        // Reset desktop nav button highlight
-        const desktopOrderBtn = document.getElementById('orderBtn');
-        const desktopReportsBtn = document.getElementById('reportsBtn');
-        const desktopAllMenuBtn = document.getElementById('allMenuBtn');
-        if (desktopOrderBtn && desktopReportsBtn && desktopAllMenuBtn) {
-            desktopOrderBtn.classList.remove('bg-gray-200', 'text-gray-700', 'hover:bg-gray-300');
-            desktopOrderBtn.classList.add('bg-orange-600', 'text-white');
-            desktopReportsBtn.classList.remove('bg-orange-600', 'text-white');
-            desktopReportsBtn.classList.add('bg-gray-200', 'text-gray-700', 'hover:bg-gray-300');
-            desktopAllMenuBtn.classList.remove('bg-orange-600', 'text-white');
-            desktopAllMenuBtn.classList.add('bg-gray-200', 'text-gray-700', 'hover:bg-gray-300');
-        }
-    };
-    if (adminLoginBtn) adminLoginBtn.onclick = adminLogin;
-
-    if (toggleAdminPasswordBtn && adminPasswordInput) {
-        toggleAdminPasswordBtn.addEventListener('click', () => {
-            if (adminPasswordInput.type === 'password') {
-                adminPasswordInput.type = 'text';
-                toggleAdminPasswordBtn.innerHTML = '<i data-lucide="eye-off" class="h-5 w-5"></i>';
-            } else {
-                adminPasswordInput.type = 'password';
-                toggleAdminPasswordBtn.innerHTML = '<i data-lucide="eye" class="h-5 w-5"></i>';
-            }
-            lucide.createIcons();
-        });
-    }
-
-    if (adminPasswordInput) {
-        adminPasswordInput.addEventListener('keypress', function(event) {
-            if (event.key === 'Enter') {
-                event.preventDefault();
-                adminLogin();
-            }
-        });
-    }
-    if (adminUsernameInput) {
-        adminUsernameInput.addEventListener('keypress', function(event) {
-            if (event.key === 'Enter') {
-                event.preventDefault();
-                if (adminPasswordInput) {
-                    adminPasswordInput.focus();
-                }
-            }
-        });
-    }
-
-    if (adminLoginModal) adminLoginModal.classList.remove('hidden');
-    // Ensure all other main interfaces are hidden when admin login is shown
-    document.getElementById('orderInterface')?.classList.add('hidden');
-    document.getElementById('reportsInterface')?.classList.add('hidden');
-    document.getElementById('mobileMenuPage')?.classList.add('hidden');
-    document.getElementById('allMenuPage')?.classList.add('hidden');
-}
-
-async function adminLogin() {
-    const adminUsernameInput = document.getElementById('adminUsername');
-    const adminPasswordInput = document.getElementById('adminPassword');
-    
-    const adminUsername = adminUsernameInput ? adminUsernameInput.value : '';
-    const adminPassword = adminPasswordInput ? adminPasswordInput.value : '';
-    
-    const adminLoginModal = document.getElementById('adminLoginModal');
-    const reportsInterface = document.getElementById('reportsInterface');
-    const orderInterface = document.getElementById('orderInterface');
-    const allMenuPage = document.getElementById('allMenuPage');
-
-    const CORRECT_USERNAME = "admin";
-    const CORRECT_PASSWORD = "admin123";
-
-    if (adminUsername === CORRECT_USERNAME && adminPassword === CORRECT_PASSWORD) {
-        window.isAdminLoggedIn = true;
-        window.showCustomAlert("Admin login successful!");
-        if (adminLoginModal) adminLoginModal.classList.add('hidden');
-        if (reportsInterface) reportsInterface.classList.remove('hidden');
-        if (orderInterface) orderInterface.classList.add('hidden'); // Hide order interface after login
-        if (allMenuPage) allMenuPage.classList.add('hidden');
-        await loadReports();
-    } else {
-        window.showCustomAlert("Invalid admin credentials.");
-        window.isAdminLoggedIn = false;
-    }
-}
+// Start the application when DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+    initializeApp();
+});
